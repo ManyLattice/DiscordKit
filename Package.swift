@@ -52,11 +52,14 @@ let package = Package(
             name: "DiscordKitBot",
             dependencies: [
                 .target(name: "DiscordKitCore"),
-                .product(name: "SwiftProtobuf", package: "swift-protobuf")
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+                .target(name: "CDave")
             ]
         ),
         .testTarget(name: "DiscordKitCommonTests", dependencies: ["DiscordKitCore"]),
-        .testTarget(name: "DiscordKitBotTests", dependencies: ["DiscordKitBot", "DiscordKitCore"])
+        .testTarget(name: "DiscordKitBotTests", dependencies: ["DiscordKitBot", "DiscordKitCore", "CDave"]),
+        // Not in git: produced by scripts/build-libdave.sh.
+        .binaryTarget(name: "CDave", path: "Vendor/CDave.xcframework")
 	],
     swiftLanguageVersions: [.v5]
 )

@@ -3,3 +3,4 @@ xcuserdata/
 .build/
 .swiftpm/
 .idea/
+Vendor/CDave.xcframework/
