@@ -97,6 +97,33 @@ API or anything!)_
 Not sure what to do next? Check out the guide below, which walks you through
 all the steps to create your own Discord bot!
 
+## Voice
+
+`DiscordKitBot` can join voice channels and play audio (macOS 13+).
+
+Since March 2026 Discord only admits voice clients that support DAVE end-to-end
+encryption. DAVE comes from Discord's [libdave](https://github.com/discord/libdave),
+which has to be built once before voice works:
+
+```sh
+scripts/build-libdave.sh
+```
+
+This produces `Vendor/CDave.xcframework` (git-ignored); the package does not
+resolve without it. The first run downloads vcpkg and builds OpenSSL and mlspp,
+which takes a while; later runs reuse `~/Library/Caches/DiscordKit-libdave`.
+
+Playback needs `ffmpeg` (`brew install ffmpeg`):
+
+```swift
+let info = try await bot.joinVoice(guild: guildID, channel: channelID)
+let connection = VoiceConnection(info: info)
+try await connection.connect()
+try await connection.play(opusFrames: FFmpegOpusSource.frames(input: "song.mp3"))
+await connection.disconnect()
+bot.leaveVoice(guild: guildID)
+```
+
 ## Resources
 
 Here are some (WIP) resources that might be useful while developing with DiscordKit.
