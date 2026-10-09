@@ -115,13 +115,17 @@ extension Client {
     public var isReady: Bool { gateway?.sessionOpen == true }
 
     /// Invoke the handler associated with the respective commands
-    private func invokeCommandHandler(_ commandData: Interaction.Data.AppCommandData, id: Snowflake, token: String) {
+    private func invokeCommandHandler(_ commandData: Interaction.Data.AppCommandData, interaction: Interaction) {
+        let id = interaction.id
+        let token = interaction.token
         if let handler = appCommandHandlers[commandData.id] {
             Self.logger.trace("Invoking application handler", metadata: ["command.name": "\(commandData.name)"])
             Task {
                 await handler(.init(
                     optionValues: commandData.options ?? [],
-                    rest: rest, applicationID: applicationID!, interactionID: id, token: token
+                    rest: rest, applicationID: applicationID!, interactionID: id, token: token,
+                    guildID: interaction.guildID, channelID: interaction.channelID,
+                    userID: interaction.member?.user?.id ?? interaction.user?.id
                 ))
             }
         }
@@ -156,7 +160,7 @@ extension Client {
             // Handle interactions based on type
             switch interaction.data {
             case .applicationCommand(let commandData):
-                invokeCommandHandler(commandData, id: interaction.id, token: interaction.token)
+                invokeCommandHandler(commandData, interaction: interaction)
             case .messageComponent(let componentData):
                 print("Component interaction: \(componentData.custom_id)")
             default: break
@@ -194,6 +198,11 @@ public extension Client {
                 await voiceJoins.fail(guildID: guild, id: joinID, error: .timedOut)
             }
         }
+    }
+
+    /// The voice state of a user in a guild, or `nil` if the user is not in a voice channel there.
+    func voiceState(guild: Snowflake, user: Snowflake) async throws -> VoiceState? {
+        try await rest.getVoiceState(guildID: guild, userID: user)
     }
 
     /// Leaves the voice channel in a guild, cancelling a pending ``joinVoice(guild:channel:selfMute:selfDeaf:timeout:)``.

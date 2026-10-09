@@ -12,9 +12,13 @@ import DiscordKitCore
 public class CommandData {
     internal init(
         optionValues: [OptionData],
-        rest: DiscordREST, applicationID: String, interactionID: Snowflake, token: String
+        rest: DiscordREST, applicationID: String, interactionID: Snowflake, token: String,
+        guildID: Snowflake? = nil, channelID: Snowflake? = nil, userID: Snowflake? = nil
     ) {
         self.rest = rest
+        self.guildID = guildID
+        self.channelID = channelID
+        self.userID = userID
         self.token = token
         self.interactionID = interactionID
         self.applicationID = applicationID
@@ -42,6 +46,12 @@ public class CommandData {
     let token: String
     /// The ID of this interaction
     public let interactionID: Snowflake
+    /// The guild the command was invoked in, `nil` in DMs
+    public let guildID: Snowflake?
+    /// The channel the command was invoked in
+    public let channelID: Snowflake?
+    /// The user who invoked the command
+    public let userID: Snowflake?
 
     fileprivate static func unwrapOptionDatas(_ options: [OptionData]) -> [String: OptionData] {
         var optValues: [String: OptionData] = [:]
