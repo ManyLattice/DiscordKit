@@ -176,6 +176,11 @@ public struct GatewayIncoming: Decodable {
         /// > presence updates for users in a certain guild.
         case presenceUpdate(PresenceUpdate)
 
+        // MARK: - Voice
+
+        case voiceStateUpdate(VoiceState)
+        case voiceServerUpdate(VoiceServerUpdate)
+
         // MARK: - Guild Members
 
         /// Guild member add
@@ -290,6 +295,10 @@ public struct GatewayIncoming: Decodable {
             // MARK: Users
             case .userUpdate: data = .userUpdate(try values.decode(CurrentUser.self, forKey: .data))
             case .presenceUpdate: data = .presenceUpdate(try values.decode(PresenceUpdate.self, forKey: .data))
+
+            // MARK: Voice
+            case .voiceStateUpdate: data = .voiceStateUpdate(try values.decode(VoiceState.self, forKey: .data))
+            case .voiceServerUpdate: data = .voiceServerUpdate(try values.decode(VoiceServerUpdate.self, forKey: .data))
 
             // MARK: Members
             case .guildMemberAdd: data = .guildMemberAdd(try values.decode(Member.self, forKey: .data))
