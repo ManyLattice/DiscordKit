@@ -25,6 +25,11 @@ public final class Client {
     private let notificationCenter = NotificationCenter()
     public let ready: NCWrapper<()>
     public let messageCreate: NCWrapper<BotMessage>
+    public let voiceStateUpdate: NCWrapper<VoiceState>
+    public let voiceServerUpdate: NCWrapper<VoiceServerUpdate>
+
+    // MARK: Voice
+    private let voiceJoins = VoiceJoinRegistry()
 
     // MARK: Configuration Members
     public let intents: Intents
@@ -51,6 +56,8 @@ public final class Client {
         // Init event wrappers
         ready = .init(.ready, notificationCenter: notificationCenter)
         messageCreate = .init(.messageCreate, notificationCenter: notificationCenter)
+        voiceStateUpdate = .init(.voiceStateUpdate, notificationCenter: notificationCenter)
+        voiceServerUpdate = .init(.voiceServerUpdate, notificationCenter: notificationCenter)
     }
 
     deinit {
@@ -138,6 +145,12 @@ extension Client {
         case .messageCreate(let message):
             let botMessage = BotMessage(from: message, rest: rest)
             messageCreate.emit(value: botMessage)
+        case .voiceStateUpdate(let state):
+            Task { await voiceJoins.receive(state) }
+            voiceStateUpdate.emit(value: state)
+        case .voiceServerUpdate(let update):
+            Task { await voiceJoins.receive(update) }
+            voiceServerUpdate.emit(value: update)
         case .interaction(let interaction):
             Self.logger.trace("Received interaction", metadata: ["interaction.id": "\(interaction.id)"])
             // Handle interactions based on type
@@ -151,6 +164,45 @@ extension Client {
         default:
             break
         }
+    }
+}
+
+// MARK: - Voice API
+public extension Client {
+    /// Joins a voice channel and returns what a voice connection needs to connect.
+    ///
+    /// Throws ``VoiceJoinError/timedOut`` if Discord does not answer, e.g. when the bot lacks permission to join.
+    func joinVoice(
+        guild: Snowflake,
+        channel: Snowflake,
+        selfMute: Bool = false,
+        selfDeaf: Bool = true,
+        timeout: TimeInterval = 10
+    ) async throws -> VoiceConnectionInfo {
+        guard let gateway = gateway, let userID = user?.id else { throw VoiceJoinError.notConnected }
+        let handshake = VoiceHandshake(guildID: guild, channelID: channel, userID: userID)
+        let joinID = UUID()
+        let voiceJoins = voiceJoins
+        return try await withCheckedThrowingContinuation { continuation in
+            Task {
+                // Registered before sending so that events arriving right after the send are not lost.
+                await voiceJoins.register(handshake, id: joinID, continuation: continuation)
+                gateway.send(.voiceStateUpdate, data: GatewayVoiceStateUpdate(
+                    guild_id: guild, channel_id: channel, self_mute: selfMute, self_deaf: selfDeaf, self_video: false
+                ))
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                await voiceJoins.fail(guildID: guild, id: joinID, error: .timedOut)
+            }
+        }
+    }
+
+    /// Leaves the voice channel in a guild, cancelling a pending ``joinVoice(guild:channel:selfMute:selfDeaf:timeout:)``.
+    func leaveVoice(guild: Snowflake) {
+        let voiceJoins = voiceJoins
+        Task { await voiceJoins.cancel(guildID: guild) }
+        gateway?.send(.voiceStateUpdate, data: GatewayVoiceStateUpdate(
+            guild_id: guild, channel_id: nil, self_mute: false, self_deaf: false, self_video: nil
+        ))
     }
 }
 

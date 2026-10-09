@@ -11,4 +11,8 @@ public extension NSNotification.Name {
     static let ready = Self("dk-ready")
 
     static let messageCreate = Self("dk-msg-create")
+
+    static let voiceStateUpdate = Self("dk-voice-state-update")
+
+    static let voiceServerUpdate = Self("dk-voice-server-update")
 }

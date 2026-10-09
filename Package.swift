@@ -55,7 +55,8 @@ let package = Package(
                 .product(name: "SwiftProtobuf", package: "swift-protobuf")
             ]
         ),
-        .testTarget(name: "DiscordKitCommonTests", dependencies: ["DiscordKitCore"])
+        .testTarget(name: "DiscordKitCommonTests", dependencies: ["DiscordKitCore"]),
+        .testTarget(name: "DiscordKitBotTests", dependencies: ["DiscordKitBot", "DiscordKitCore"])
 	],
     swiftLanguageVersions: [.v5]
 )
