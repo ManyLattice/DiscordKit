@@ -15,4 +15,12 @@ public extension NSNotification.Name {
     static let voiceStateUpdate = Self("dk-voice-state-update")
 
     static let voiceServerUpdate = Self("dk-voice-server-update")
+
+    static let reactionAdd = Self("dk-reaction-add")
+
+    static let reactionRemove = Self("dk-reaction-remove")
+
+    static let memberJoin = Self("dk-member-join")
+
+    static let memberLeave = Self("dk-member-leave")
 }

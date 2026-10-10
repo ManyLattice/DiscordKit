@@ -160,6 +160,10 @@ public struct GatewayIncoming: Decodable {
         ///
         /// - Parameter messageACKEvt: Information about the acknowledged messages
         case messageACK(MessageACKEvt)
+        /// A user reacted to a message
+        case messageReactionAdd(MessageReactionEvt)
+        /// A user removed their reaction from a message
+        case messageReactionRemove(MessageReactionEvt)
 
         // MARK: - Users
 
@@ -291,6 +295,8 @@ public struct GatewayIncoming: Decodable {
             case .messageDelete: data = .messageDelete(try values.decode(MessageDelete.self, forKey: .data))
             case .messageDeleteBulk: data = .messageDeleteBulk(try values.decode(MessageDeleteBulk.self, forKey: .data))
             case .messageACK: data = .messageACK(try values.decode(MessageACKEvt.self, forKey: .data))
+            case .messageReactAdd: data = .messageReactionAdd(try values.decode(MessageReactionEvt.self, forKey: .data))
+            case .messageReactRemove: data = .messageReactionRemove(try values.decode(MessageReactionEvt.self, forKey: .data))
 
             // MARK: Users
             case .userUpdate: data = .userUpdate(try values.decode(CurrentUser.self, forKey: .data))

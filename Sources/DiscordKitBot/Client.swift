@@ -30,6 +30,12 @@ public final class Client {
     public let messageCreate: NCWrapper<BotMessage>
     public let voiceStateUpdate: NCWrapper<VoiceState>
     public let voiceServerUpdate: NCWrapper<VoiceServerUpdate>
+    public let reactionAdd: NCWrapper<MessageReactionEvt>
+    public let reactionRemove: NCWrapper<MessageReactionEvt>
+    /// Needs the privileged ``Intents/guildMembers`` intent, enabled in the Developer Portal too
+    public let memberJoin: NCWrapper<Member>
+    /// Needs the privileged ``Intents/guildMembers`` intent, enabled in the Developer Portal too
+    public let memberLeave: NCWrapper<GuildMemberRemove>
 
     // MARK: Voice
     private let voiceJoins = VoiceJoinRegistry()
@@ -61,6 +67,10 @@ public final class Client {
         messageCreate = .init(.messageCreate, notificationCenter: notificationCenter)
         voiceStateUpdate = .init(.voiceStateUpdate, notificationCenter: notificationCenter)
         voiceServerUpdate = .init(.voiceServerUpdate, notificationCenter: notificationCenter)
+        reactionAdd = .init(.reactionAdd, notificationCenter: notificationCenter)
+        reactionRemove = .init(.reactionRemove, notificationCenter: notificationCenter)
+        memberJoin = .init(.memberJoin, notificationCenter: notificationCenter)
+        memberLeave = .init(.memberLeave, notificationCenter: notificationCenter)
     }
 
     deinit {
@@ -199,6 +209,14 @@ extension Client {
         case .voiceServerUpdate(let update):
             Task { await voiceJoins.receive(update) }
             voiceServerUpdate.emit(value: update)
+        case .messageReactionAdd(let reaction):
+            reactionAdd.emit(value: reaction)
+        case .messageReactionRemove(let reaction):
+            reactionRemove.emit(value: reaction)
+        case .guildMemberAdd(let member):
+            memberJoin.emit(value: member)
+        case .guildMemberRemove(let removal):
+            memberLeave.emit(value: removal)
         case .interaction(let interaction):
             Self.logger.trace("Received interaction", metadata: ["interaction.id": "\(interaction.id)"])
             // Handle interactions based on type
