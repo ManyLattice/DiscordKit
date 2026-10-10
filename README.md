@@ -97,6 +97,42 @@ API or anything!)_
 Not sure what to do next? Check out the guide below, which walks you through
 all the steps to create your own Discord bot!
 
+## Interactions
+
+Options can take users, channels, roles, mentionables and attachments; the handler
+gets the picked entity with its data:
+
+```swift
+NewAppCommand("kick", description: "Kick a player") {
+    UserOption("player", description: "Who").required()
+    ChannelOption("room", description: "Where", channelTypes: [.voice])
+} handler: { interaction in
+    let name = interaction.user(of: "player")?.username
+    let nick = interaction.member(of: "player")?.nick
+    let room = interaction.channel(of: "room")?.name
+}
+```
+
+Buttons, select menus, modals and autocomplete are routed by custom ID or command name:
+
+```swift
+bot.onComponent("spin") { click in try? await click.update(content: "Spinning") }
+bot.onComponent(prefix: "vote:") { click in /* click.customID == "vote:42" */ }
+bot.onModal("story") { form in try? await form.reply(form.value(of: "bio") ?? "") }
+bot.onAutocomplete("play") { typing in
+    [AppCommandOptionChoice(name: "Lofi", value: .string("lofi \(typing.query)"))]
+}
+```
+
+Open a modal from a command or a component with `showModal(Modal(id:title:inputs:))`.
+
+Events: `bot.reactionAdd`, `bot.reactionRemove`, and with the privileged
+`.guildMembers` intent (also enabled in the Developer Portal) `bot.memberJoin`,
+`bot.memberLeave`.
+
+Embeds support `author`, `image`, `thumbnail` and `footer(_:iconURL:)`; field and
+embed builders accept `for` and `if`.
+
 ## Voice
 
 `DiscordKitBot` can join voice channels and play audio (macOS 13+).
