@@ -11,7 +11,7 @@ import DiscordKitCore
 /// Provides methods to get parameters of and respond to application command interactions
 public class CommandData {
     internal init(
-        optionValues: [OptionData],
+        optionValues: [OptionData], resolved: ResolvedData? = nil,
         rest: DiscordREST, applicationID: String, interactionID: Snowflake, token: String,
         guildID: Snowflake? = nil, channelID: Snowflake? = nil, userID: Snowflake? = nil
     ) {
@@ -24,6 +24,7 @@ public class CommandData {
         self.applicationID = applicationID
 
         self.optionValues = Self.unwrapOptionDatas(optionValues)
+        self.resolved = resolved
     }
 
     /// A private reference to the active rest handler for handling actions
@@ -37,6 +38,9 @@ public class CommandData {
 
     /// Values of options in this command
     private let optionValues: [String: OptionData]
+
+    /// Users, members, roles, channels and attachments referenced by option values
+    private let resolved: ResolvedData?
 
     /// If this reply has already been deferred
     fileprivate var hasReplied = false
@@ -81,6 +85,27 @@ public extension CommandData {
         optionValues[name]?.value?.value()
     }
 
+    /// Get the user picked in a user or mentionable option
+    func user(of name: String) -> User? {
+        resolvedID(of: name).flatMap { resolved?.users?[$0] }
+    }
+    /// Get the guild member picked in a user or mentionable option, `nil` outside guilds
+    func member(of name: String) -> PartialMember? {
+        resolvedID(of: name).flatMap { resolved?.members?[$0] }
+    }
+    /// Get the channel picked in a channel option
+    func channel(of name: String) -> Channel? {
+        resolvedID(of: name).flatMap { resolved?.channels?[$0] }
+    }
+    /// Get the role picked in a role or mentionable option
+    func role(of name: String) -> Role? {
+        resolvedID(of: name).flatMap { resolved?.roles?[$0] }
+    }
+    /// Get the file uploaded in an attachment option
+    func attachment(of name: String) -> Attachment? {
+        resolvedID(of: name).flatMap { resolved?.attachments?[$0] }
+    }
+
     /// Check if a sub-option is selected, and get its nested options
     ///
     /// This will probably be reworked in the future to provide a more friendly way of
@@ -95,6 +120,10 @@ public extension CommandData {
 
     /// The wrapped value of an option
     typealias OptionData = Interaction.Data.AppCommandData.OptionData
+
+    private func resolvedID(of name: String) -> Snowflake? {
+        optionValues[name]?.value?.value()
+    }
 }
 
 // MARK: - Callback APIs

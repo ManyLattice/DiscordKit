@@ -63,6 +63,8 @@ public struct Interaction: Decodable {
             public let type: Int
             /// Options of command (present if the command has options)
             public let options: [OptionData]?
+            /// Users, members, roles, channels and attachments referenced by the options
+            public let resolved: ResolvedData?
 
             /// The data representing one option
             public struct OptionData: Codable {
@@ -144,7 +146,8 @@ public struct Interaction: Decodable {
                     case .integer: value = .integer(try container.decode(Int.self, forKey: .value))
                     case .number: value = .double(try container.decode(Double.self, forKey: .value))
                     case .boolean: value = .boolean(try container.decode(Bool.self, forKey: .value))
-                    case .string: value = .string(try container.decode(String.self, forKey: .value))
+                    case .string, .user, .channel, .role, .mentionable, .attachment:
+                        value = .string(try container.decode(String.self, forKey: .value))
                     default: value = nil
                     }
                 }
