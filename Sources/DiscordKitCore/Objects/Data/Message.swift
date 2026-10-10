@@ -319,6 +319,17 @@ public enum MessageComponentTypes: Int, Codable {
     case button = 2
     case selectMenu = 3
     case textInput = 4
+    case userSelect = 5
+    case roleSelect = 6
+    case mentionableSelect = 7
+    case channelSelect = 8
+
+    case unknown = -1
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self = Self(rawValue: try container.decode(Int.self)) ?? Self.unknown
+    }
 }
 
 /// New message component struct

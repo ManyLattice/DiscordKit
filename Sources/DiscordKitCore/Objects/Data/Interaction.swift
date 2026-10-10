@@ -160,6 +160,10 @@ public struct Interaction: Decodable {
         public struct MessageComponentData: Codable {
             public let custom_id: String
             public let component_type: MessageComponentTypes
+            /// Values picked in a select menu
+            public let values: [String]?
+            /// Users, members, roles and channels picked in an entity select menu
+            public let resolved: ResolvedData?
         }
 
         case applicationCommand(AppCommandData)

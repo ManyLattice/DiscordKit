@@ -20,6 +20,7 @@ public final class Client {
 
     // MARK: Application Command Handlers
     fileprivate var appCommandHandlers: [Snowflake: NewAppCommand.Handler] = [:]
+    fileprivate var componentHandlers = CustomIDRegistry<ComponentInteraction.Handler>()
     fileprivate var modalHandlers = CustomIDRegistry<ModalInteraction.Handler>()
 
     // MARK: Event publishers
@@ -132,6 +133,17 @@ extension Client {
         }
     }
 
+    private func invokeComponentHandler(_ componentData: Interaction.Data.MessageComponentData, interaction: Interaction) {
+        guard let handler = componentHandlers.handler(for: componentData.custom_id) else {
+            Self.logger.warning("No handler for component", metadata: ["custom_id": "\(componentData.custom_id)"])
+            return
+        }
+        let component = ComponentInteraction(data: componentData, interaction: interaction, rest: rest, applicationID: interaction.applicationID)
+        Task {
+            await handler(component)
+        }
+    }
+
     private func invokeModalHandler(_ modalData: ModalSubmitData, interaction: Interaction) {
         guard let handler = modalHandlers.handler(for: modalData.custom_id) else {
             Self.logger.warning("No handler for modal", metadata: ["custom_id": "\(modalData.custom_id)"])
@@ -174,7 +186,7 @@ extension Client {
             case .applicationCommand(let commandData):
                 invokeCommandHandler(commandData, interaction: interaction)
             case .messageComponent(let componentData):
-                print("Component interaction: \(componentData.custom_id)")
+                invokeComponentHandler(componentData, interaction: interaction)
             case .modalSubmit(let modalData):
                 invokeModalHandler(modalData, interaction: interaction)
             default: break
@@ -182,6 +194,21 @@ extension Client {
         default:
             break
         }
+    }
+}
+
+// MARK: - Component API
+public extension Client {
+    /// Calls `handler` when a button or select menu with this exact custom ID is used
+    func onComponent(_ customID: String, handler: @escaping ComponentInteraction.Handler) {
+        componentHandlers.register(customID, handler: handler)
+    }
+
+    /// Calls `handler` for components whose custom ID starts with `prefix`, e.g. `"vote:"` for `"vote:42"`
+    ///
+    /// An exact ID registered with ``onComponent(_:handler:)`` wins, then the longest prefix.
+    func onComponent(prefix: String, handler: @escaping ComponentInteraction.Handler) {
+        componentHandlers.register(prefix: prefix, handler: handler)
     }
 }
 
