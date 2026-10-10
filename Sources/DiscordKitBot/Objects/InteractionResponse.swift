@@ -81,15 +81,24 @@ public struct InteractionResponse: Encodable {
         }
 
         case message(Message)
-        // case autocompleteResult
+        case autocompleteResult([AppCommandOptionChoice])
         case modal(Modal)
 
-        public func encode(to encoder: Encoder) throws {
-            var container = encoder.singleValueContainer()
+        private enum AutocompleteKeys: CodingKey {
+            case choices
+        }
 
+        public func encode(to encoder: Encoder) throws {
             switch self {
-            case .message(let message): try container.encode(message)
-            case .modal(let modal): try container.encode(modal)
+            case .message(let message):
+                var container = encoder.singleValueContainer()
+                try container.encode(message)
+            case .autocompleteResult(let choices):
+                var container = encoder.container(keyedBy: AutocompleteKeys.self)
+                try container.encode(choices, forKey: .choices)
+            case .modal(let modal):
+                var container = encoder.singleValueContainer()
+                try container.encode(modal)
             }
         }
     }

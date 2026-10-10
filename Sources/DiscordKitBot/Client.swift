@@ -22,6 +22,7 @@ public final class Client {
     fileprivate var appCommandHandlers: [Snowflake: NewAppCommand.Handler] = [:]
     fileprivate var componentHandlers = CustomIDRegistry<ComponentInteraction.Handler>()
     fileprivate var modalHandlers = CustomIDRegistry<ModalInteraction.Handler>()
+    fileprivate var autocompleteHandlers: [String: AutocompleteInteraction.Handler] = [:]
 
     // MARK: Event publishers
     private let notificationCenter = NotificationCenter()
@@ -155,6 +156,25 @@ extension Client {
         }
     }
 
+    private func invokeAutocompleteHandler(_ commandData: Interaction.Data.AppCommandData, interaction: Interaction) {
+        guard let handler = autocompleteHandlers[commandData.name] else {
+            Self.logger.warning("No autocomplete handler", metadata: ["command.name": "\(commandData.name)"])
+            return
+        }
+        let autocomplete = AutocompleteInteraction(data: commandData, interaction: interaction)
+        Task { [rest] in
+            let choices = await handler(autocomplete)
+            do {
+                try await rest.sendInteractionResponse(
+                    .init(type: .appCommandAutocompleteResult, data: .autocompleteResult(Array(choices.prefix(25)))),
+                    interactionID: interaction.id, token: interaction.token
+                )
+            } catch {
+                Self.logger.error("Autocomplete response failed", metadata: ["error": "\(error)"])
+            }
+        }
+    }
+
     /// Handle a subset of gateway events
     private func handleEvent(_ data: GatewayIncoming.Data) {
         switch data {
@@ -183,6 +203,8 @@ extension Client {
             Self.logger.trace("Received interaction", metadata: ["interaction.id": "\(interaction.id)"])
             // Handle interactions based on type
             switch interaction.data {
+            case .applicationCommand(let commandData) where interaction.type == .applicationCmdAutocomplete:
+                invokeAutocompleteHandler(commandData, interaction: interaction)
             case .applicationCommand(let commandData):
                 invokeCommandHandler(commandData, interaction: interaction)
             case .messageComponent(let componentData):
@@ -212,7 +234,7 @@ public extension Client {
     }
 }
 
-// MARK: - Modal API
+// MARK: - Modal and autocomplete API
 public extension Client {
     /// Calls `handler` when a modal with this exact custom ID is submitted
     func onModal(_ customID: String, handler: @escaping ModalInteraction.Handler) {
@@ -222,6 +244,13 @@ public extension Client {
     /// Calls `handler` for modals whose custom ID starts with `prefix`; an exact ID wins, then the longest prefix
     func onModal(prefix: String, handler: @escaping ModalInteraction.Handler) {
         modalHandlers.register(prefix: prefix, handler: handler)
+    }
+
+    /// Suggests values while the user types in an option declared with `autocomplete: true` of command `commandName`
+    ///
+    /// Discord shows at most 25 choices; extra ones are dropped.
+    func onAutocomplete(_ commandName: String, handler: @escaping AutocompleteInteraction.Handler) {
+        autocompleteHandlers[commandName] = handler
     }
 }
 

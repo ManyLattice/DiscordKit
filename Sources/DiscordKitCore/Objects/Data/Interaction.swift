@@ -142,6 +142,11 @@ public struct Interaction: Decodable {
                     type = try container.decode(CommandOptionType.self, forKey: .type)
                     options = try container.decodeIfPresent([Self].self, forKey: .options)
                     focused = try container.decodeIfPresent(Bool.self, forKey: .focused)
+                    // Autocomplete sends what the user typed so far as a string, whatever the option type
+                    if focused == true, let typed = try? container.decode(String.self, forKey: .value) {
+                        value = .string(typed)
+                        return
+                    }
                     switch type {
                     case .integer: value = .integer(try container.decode(Int.self, forKey: .value))
                     case .number: value = .double(try container.decode(Double.self, forKey: .value))
