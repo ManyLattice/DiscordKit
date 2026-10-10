@@ -35,6 +35,7 @@ public actor VoiceConnection {
     private var eventsTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var readiness: CheckedContinuation<Void, Error>?
+    private var closeError: Error?
 
     //MARK: - Init
 
@@ -196,7 +197,7 @@ public actor VoiceConnection {
     }
 
     private func sendAudio(_ frame: Data, ssrc: UInt32) throws {
-        guard var packetizer, let udp else { return }
+        guard status == .ready, var packetizer, let udp else { throw closeError ?? VoiceGatewayError.closed(code: 0) }
         let payload = dave?.encrypt(frame, ssrc: ssrc) ?? frame
         let packet = try packetizer.packet(for: payload)
         self.packetizer = packetizer
@@ -243,6 +244,7 @@ public actor VoiceConnection {
 
     private func finish(with error: Error) {
         status = .closed
+        closeError = error
         heartbeatTask?.cancel()
         eventsTask?.cancel()
         socket?.close()

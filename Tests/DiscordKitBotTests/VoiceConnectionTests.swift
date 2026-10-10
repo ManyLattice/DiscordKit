@@ -50,6 +50,37 @@ final class VoiceConnectionTests: XCTestCase {
         server.stop()
     }
 
+    func testPlayStopsWhenServerClosesConnection() async throws {
+        let server = try FakeVoiceServer()
+        let wsPort = try await server.start()
+        let connection = VoiceConnection(
+            info: VoiceFixtures.expectedInfo,
+            crypto: nil,
+            gatewayURL: try XCTUnwrap(URL(string: "ws://127.0.0.1:\(wsPort)"))
+        )
+        try await connection.connect()
+
+        let playback = Task {
+            try await connection.play(opusFrames: AsyncStream { continuation in
+                for _ in 0..<1500 {
+                    continuation.yield(Data([0xFC, 0x01]))
+                }
+                continuation.finish()
+            })
+        }
+        _ = try await server.nextRTPPacket()
+        server.close(code: 4014)
+
+        do {
+            _ = try await playback.value
+            XCTFail("Expected playback to stop")
+        } catch {
+            XCTAssertEqual(error as? VoiceGatewayError, .closed(code: 4014))
+        }
+
+        server.stop()
+    }
+
     func testConnectFailsWhenServerRejectsSession() async throws {
         let server = try FakeVoiceServer(closeCodeOnIdentify: 4006)
         let wsPort = try await server.start()
@@ -84,6 +115,7 @@ private final class FakeVoiceServer {
     private lazy var rtpIterator = rtpPackets.makeAsyncIterator()
     private let lock = NSLock()
     private var opcodes: [Int] = []
+    private var wsConnection: NWConnection?
 
     var receivedOpcodes: [Int] {
         lock.lock()
@@ -111,6 +143,9 @@ private final class FakeVoiceServer {
         }
         wsListener.newConnectionHandler = { [weak self] connection in
             guard let self else { return }
+            self.lock.lock()
+            self.wsConnection = connection
+            self.lock.unlock()
             connection.start(queue: self.queue)
             self.receiveWS(on: connection)
         }
@@ -121,6 +156,14 @@ private final class FakeVoiceServer {
     func nextRTPPacket() async throws -> Data {
         guard let packet = await rtpIterator.next() else { throw VoiceGatewayError.closed(code: 0) }
         return packet
+    }
+
+    func close(code: UInt16) {
+        lock.lock()
+        let connection = wsConnection
+        lock.unlock()
+        guard let connection else { return }
+        Self.sendClose(code: code, on: connection)
     }
 
     func stop() {
@@ -175,12 +218,7 @@ private final class FakeVoiceServer {
             switch opcode {
             case 0:
                 if let closeCode = self.closeCodeOnIdentify {
-                    let close = NWProtocolWebSocket.Metadata(opcode: .close)
-                    close.closeCode = .privateCode(closeCode)
-                    let context = NWConnection.ContentContext(identifier: "close", metadata: [close])
-                    connection.send(content: nil, contentContext: context, isComplete: true, completion: .contentProcessed { _ in
-                        connection.cancel()
-                    })
+                    Self.sendClose(code: closeCode, on: connection)
                     return
                 }
                 self.sendText(#"{"op":8,"d":{"v":8,"heartbeat_interval":41250}}"#, on: connection)
@@ -198,6 +236,15 @@ private final class FakeVoiceServer {
             }
             self.receiveWS(on: connection)
         }
+    }
+
+    private static func sendClose(code: UInt16, on connection: NWConnection) {
+        let close = NWProtocolWebSocket.Metadata(opcode: .close)
+        close.closeCode = .privateCode(code)
+        let context = NWConnection.ContentContext(identifier: "close", metadata: [close])
+        connection.send(content: nil, contentContext: context, isComplete: true, completion: .contentProcessed { _ in
+            connection.cancel()
+        })
     }
 
     private func sendText(_ text: String, on connection: NWConnection) {
