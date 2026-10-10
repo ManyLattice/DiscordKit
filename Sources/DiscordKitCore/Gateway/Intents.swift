@@ -67,7 +67,7 @@ public struct Intents: OptionSet, Encodable {
     /// Auto moderation configuration
     static public let autoModCfg   = Self(rawValue: 1 << 20)
     /// Auto moderation execution
-    static public let autoModExec  = Self(rawValue: 1 << 20)
+    static public let autoModExec  = Self(rawValue: 1 << 21)
 
     static public let unprivileged: Self = [.guilds, .guildBans, .emoteSticker, .integrations, .webhooks, .guildInvites, .voiceStates, .messages, .reactions, .msgTyping, .directMsgs, .dmReactions, .dmMsgTyping, .scheduledEvt, .autoModCfg, .autoModExec]
     static public let privileged: Self = [.guildMembers, .presences, .messageContent]
