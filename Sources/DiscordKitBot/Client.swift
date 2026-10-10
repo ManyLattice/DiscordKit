@@ -20,6 +20,7 @@ public final class Client {
 
     // MARK: Application Command Handlers
     fileprivate var appCommandHandlers: [Snowflake: NewAppCommand.Handler] = [:]
+    fileprivate var modalHandlers = CustomIDRegistry<ModalInteraction.Handler>()
 
     // MARK: Event publishers
     private let notificationCenter = NotificationCenter()
@@ -131,6 +132,17 @@ extension Client {
         }
     }
 
+    private func invokeModalHandler(_ modalData: ModalSubmitData, interaction: Interaction) {
+        guard let handler = modalHandlers.handler(for: modalData.custom_id) else {
+            Self.logger.warning("No handler for modal", metadata: ["custom_id": "\(modalData.custom_id)"])
+            return
+        }
+        let modal = ModalInteraction(data: modalData, interaction: interaction, rest: rest, applicationID: interaction.applicationID)
+        Task {
+            await handler(modal)
+        }
+    }
+
     /// Handle a subset of gateway events
     private func handleEvent(_ data: GatewayIncoming.Data) {
         switch data {
@@ -163,11 +175,26 @@ extension Client {
                 invokeCommandHandler(commandData, interaction: interaction)
             case .messageComponent(let componentData):
                 print("Component interaction: \(componentData.custom_id)")
+            case .modalSubmit(let modalData):
+                invokeModalHandler(modalData, interaction: interaction)
             default: break
             }
         default:
             break
         }
+    }
+}
+
+// MARK: - Modal API
+public extension Client {
+    /// Calls `handler` when a modal with this exact custom ID is submitted
+    func onModal(_ customID: String, handler: @escaping ModalInteraction.Handler) {
+        modalHandlers.register(customID, handler: handler)
+    }
+
+    /// Calls `handler` for modals whose custom ID starts with `prefix`; an exact ID wins, then the longest prefix
+    func onModal(prefix: String, handler: @escaping ModalInteraction.Handler) {
+        modalHandlers.register(prefix: prefix, handler: handler)
     }
 }
 

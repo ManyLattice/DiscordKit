@@ -82,13 +82,14 @@ public struct InteractionResponse: Encodable {
 
         case message(Message)
         // case autocompleteResult
-        // case modal
+        case modal(Modal)
 
         public func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
 
             switch self {
             case .message(let message): try container.encode(message)
+            case .modal(let modal): try container.encode(modal)
             }
         }
     }

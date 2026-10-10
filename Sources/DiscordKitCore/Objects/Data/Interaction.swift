@@ -164,6 +164,7 @@ public struct Interaction: Decodable {
 
         case applicationCommand(AppCommandData)
         case messageComponent(MessageComponentData)
+        case modalSubmit(ModalSubmitData)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -207,6 +208,8 @@ public struct Interaction: Decodable {
             data = .applicationCommand(try container.decode(Data.AppCommandData.self, forKey: .data))
         case .messageComponent:
             data = .messageComponent(try container.decode(Data.MessageComponentData.self, forKey: .data))
+        case .modalSubmit:
+            data = .modalSubmit(try container.decode(ModalSubmitData.self, forKey: .data))
         default: data = nil
         }
     }

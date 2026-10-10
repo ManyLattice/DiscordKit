@@ -180,4 +180,11 @@ public extension CommandData {
         try await sendResponse(.message(.init(flags: ephemeral ? .ephemeral : nil)), type: .deferredInteractionReply)
         hasReplied = true
     }
+
+    /// Open a modal, only possible before any other response
+    func showModal(_ modal: Modal) async throws {
+        guard !hasReplied else { throw InteractionError.modalAfterResponse }
+        try await sendResponse(.modal(modal), type: .modal)
+        hasReplied = true
+    }
 }
